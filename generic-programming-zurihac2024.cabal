@@ -1,0 +1,23 @@
+cabal-version: 3.0
+name: generic-programming-zurihac2024
+version: 0.1
+author: Andres Löh <andres@well-typed.com>
+
+library
+  default-language:
+    GHC2021
+  build-depends:
+    aeson,
+    base,
+    cborg,
+    containers,
+    generics-sop,
+    serialise,
+    sop-core,
+    text
+  ghc-options:
+    -Wall
+    -Wno-unticked-promoted-constructors -Wno-unused-matches
+    -Wno-unused-imports
+  exposed-modules:
+    SOP
