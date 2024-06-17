@@ -76,3 +76,42 @@ expr = Lam "x" (App (Var "x") (Var "y"))
 -- >>> :kind! Rep Expr
 -- Rep Expr :: *
 -- = SOP I '[ '[[Char]], '[Expr, Expr], '[[Char], Expr]]
+
+countArgs :: NP f xs -> Int {- Think of NP f xs as [ f x ] -}
+countArgs Nil = 0
+countArgs (_ :* xs) = 1 + countArgs xs
+
+countArgs' :: All Top xs => NP f xs -> Int
+countArgs' p = length (collapse_NP (map_NP (const (K ())) p))
+
+-- >>> countArgs (I (Var "x") :* I (Var "y") :* Nil)
+-- 2
+-- >>> countArgs' (I (Var "x") :* I (Var "y") :* Nil)
+-- 2
+
+index :: NS f xs -> Int
+index (Z _) = 0
+index (S s) = 1 + index s
+
+-- >>> index (S (Z undefined))
+-- 1
+
+recursivelyApplyEncode :: All Serialise xs => NP I xs -> NP (K Encoding) xs
+recursivelyApplyEncode = cmap_NP (Proxy @Serialise) (\(I x) -> K (encode x))
+
+encodeSum :: All (All Serialise) xss => Int -> NS (NP I) xss -> Encoding
+encodeSum tag s = collapse_NS (cmap_NS
+  (Proxy @(All Serialise))
+  (\p -> K (encodeListLen (fromIntegral (countArgs p + 1))
+    <> encodeWord (fromIntegral tag)
+    <> (mconcat . collapse_NP . recursivelyApplyEncode) p))
+  s)
+
+gencode :: forall a. (Generic a, All (All Serialise) (Code a)) => a -> Encoding
+gencode x =
+  let x' :: NS (NP I) (Code a)
+      SOP x' = from x
+
+      tag :: Int
+      tag = index x'
+  in encodeSum tag x'
