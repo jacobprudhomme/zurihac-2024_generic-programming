@@ -24,9 +24,14 @@ data Expr =
   deriving stock GHC.Generic
   deriving anyclass SOP.Generic
 
+{- Uncomment the following to use our hand-rolled encoding/decoding logic, no generics: -}
+-- instance Serialise Expr where
+--   encode = encodeExpr
+--   decode = decodeExpr
+
 instance Serialise Expr where
-  encode = encodeExpr
-  decode = decodeExpr
+  encode = gencode
+  decode = gdecode
 
 {- Normally, would have to write all the following manually to encode expressions -}
 encodeExpr :: Expr -> Encoding
@@ -116,6 +121,14 @@ gencode x =
       tag = index x'
   in encodeSum tag x'
 
+{- Our SOP.Generics serialization logic... -}
+-- === serialise expr
+-- "\131\STXax\131\SOH\130\NULax\130\NULay"
+
+{- ...versus the hand-rolled/GHC generic deriving one. -}
+-- === serialise expr
+-- "\131\STXax\131\SOH\130\NULax\130\NULay"
+
 decodeCalls :: All (All Serialise) xss => POP (Decoder s) xss
 decodeCalls = cpure_POP (Proxy @Serialise) decode
 
@@ -138,3 +151,11 @@ gdecode = do
   case r of
     Nothing -> fail "Could not decode"
     Just r' -> to <$> extractDecoder r'
+
+{- Our SOP.Generics deserialization logic... -}
+-- === deserialise (serialise expr) :: Expr
+-- Lam "x" (App (Var "x") (Var "y"))
+
+{- ...versus the hand-rolled/GHC generic deriving one. -}
+-- === deserialise (serialise expr) :: Expr
+-- Lam "x" (App (Var "x") (Var "y"))
