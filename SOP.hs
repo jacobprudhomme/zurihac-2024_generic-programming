@@ -24,6 +24,9 @@ data Expr =
   deriving stock GHC.Generic
   deriving anyclass SOP.Generic
 
+expr :: Expr
+expr = Lam "x" (App (Var "x") (Var "y"))
+
 {- Uncomment the following to use our hand-rolled encoding/decoding logic, no generics: -}
 -- instance Serialise Expr where
 --   encode = encodeExpr
@@ -49,14 +52,6 @@ decodeExpr = do
     (3, 1) -> App <$> decodeExpr <*> decodeExpr
     (3, 2) -> Lam <$> decode <*> decodeExpr
     _ -> fail "cannot decode"
-
-expr :: Expr
-expr = Lam "x" (App (Var "x") (Var "y"))
-
--- >>> serialise expr
--- "\131\STXax\131\SOH\130\NULax\130\NULay"
--- >>> deserialise (serialise expr) :: Expr
--- Lam "x" (App (Var "x") (Var "y"))
 
 {- Generics.SOP allows you to treat things as if you're just doing
    the standard functional programming we know and love!
