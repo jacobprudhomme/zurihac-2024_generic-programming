@@ -115,3 +115,26 @@ gencode x =
       tag :: Int
       tag = index x'
   in encodeSum tag x'
+
+decodeCalls :: All (All Serialise) xss => POP (Decoder s) xss
+decodeCalls = cpure_POP (Proxy @Serialise) decode
+
+decodeCallsInjected :: All (All Serialise) xss => NP (K (SOP (Decoder s) xss)) xss
+decodeCallsInjected = apInjs'_POP decodeCalls
+
+lookupIndex :: Int -> NP (K a) xs -> Maybe a
+lookupIndex 0 (K x :* _) = Just x
+lookupIndex i (_ :* xs)  = lookupIndex (i - 1) xs
+lookupIndex _ Nil        = Nothing
+
+extractDecoder :: All (All Top) xss => SOP (Decoder s) xss -> Decoder s (SOP I xss)
+extractDecoder = sequence_SOP
+
+gdecode :: (Generic a, All (All Serialise) (Code a)) => Decoder s a
+gdecode = do
+  _len <- decodeListLen
+  tag <- decodeWord
+  let r = lookupIndex (fromIntegral tag) decodeCallsInjected
+  case r of
+    Nothing -> fail "Could not decode"
+    Just r' -> to <$> extractDecoder r'
